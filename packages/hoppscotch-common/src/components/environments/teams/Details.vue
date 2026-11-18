@@ -409,24 +409,32 @@ const liveEnvs = computed(() => {
 const getCurrentValue = (
   editingID: string,
   varIndex: number,
+  variables: Environment["variables"],
   isSecret: boolean
 ) => {
   if (isSecret) {
     return secretEnvironmentService.getSecretEnvironmentVariable(
       editingID,
-      varIndex
+      varIndex,
+      variables
     )?.value
   }
   return currentEnvironmentValueService.getEnvironmentVariable(
     editingID,
-    varIndex
+    varIndex,
+    variables
   )?.currentValue
 }
 
-const getInitialValue = (editingID: string, varIndex: number) => {
+const getInitialValue = (
+  editingID: string,
+  varIndex: number,
+  variables: Environment["variables"]
+) => {
   return secretEnvironmentService.getSecretEnvironmentVariable(
     editingID,
-    varIndex
+    varIndex,
+    variables
   )?.initialValue
 }
 
@@ -448,8 +456,9 @@ watch(
         )
       } else if (props.editingEnvironment !== null) {
         editingID.value = props.editingEnvironment.id
+        const variables = props.editingEnvironment.environment.variables ?? []
         vars.value = pipe(
-          props.editingEnvironment.environment.variables ?? [],
+          variables,
           A.mapWithIndex((index, e) => ({
             id: idTicker.value++,
             env: {
@@ -458,10 +467,15 @@ watch(
                 getCurrentValue(
                   props.editingEnvironment?.id ?? "",
                   index,
+                  variables,
                   e.secret
                 ) ?? e.currentValue,
               initialValue: e.secret
-                ? (getInitialValue(props.editingEnvironment?.id ?? "", index) ??
+                ? (getInitialValue(
+                    props.editingEnvironment?.id ?? "",
+                    index,
+                    variables
+                  ) ??
                   e.initialValue ??
                   "")
                 : e.initialValue,

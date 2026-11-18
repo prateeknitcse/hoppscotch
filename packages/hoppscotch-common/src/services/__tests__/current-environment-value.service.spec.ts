@@ -60,6 +60,35 @@ describe("CurrentValueService", () => {
     })
   })
 
+  describe("getEnvironmentVariable with variables", () => {
+    it("keeps duplicate keys separate when a row above the second one was removed", () => {
+      // Stored for [X, S(secret), X]; the variables list no longer has S.
+      service.addEnvironment("env1", [
+        { key: "X", currentValue: "first", varIndex: 0, isSecret: false },
+        { key: "X", currentValue: "second", varIndex: 2, isSecret: false },
+      ])
+      const variables = [
+        { key: "X", secret: false },
+        { key: "X", secret: false },
+      ]
+
+      expect(
+        service.getEnvironmentVariable("env1", 1, variables)?.currentValue
+      ).toBe("second")
+    })
+
+    it("returns undefined for a secret variable sitting at a stored non-secret's index", () => {
+      service.addEnvironment("env1", [
+        { key: "A", currentValue: "a-value", varIndex: 0, isSecret: false },
+      ])
+      const variables = [{ key: "S", secret: true }]
+
+      expect(
+        service.getEnvironmentVariable("env1", 0, variables)
+      ).toBeUndefined()
+    })
+  })
+
   describe("getEnvironmentVariableValue", () => {
     it("should return the value of the variable", () => {
       const id = "env1"

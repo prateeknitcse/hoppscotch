@@ -1,6 +1,10 @@
 import { Container, Service } from "dioc"
 import { cloneDeep } from "lodash-es"
 import { reactive, computed, watch, nextTick } from "vue"
+import {
+  sameKeyOccurrence,
+  VariableIdentity,
+} from "./secret-environment.service"
 
 /**
  * Defines a environment variable.
@@ -72,19 +76,41 @@ export class CurrentValueService extends Service {
    * Get a environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param variables The environment's variables. When given, the entry is
+   * matched by key, secret flag and same-key occurrence (see
+   * `sameKeyOccurrence`) instead of by `varIndex` alone.
    */
-  public getEnvironmentVariable(id: string, varIndex: number) {
+  public getEnvironmentVariable(
+    id: string,
+    varIndex: number,
+    variables?: readonly VariableIdentity[]
+  ) {
     const vars = this.getEnvironment(id)
-    return vars?.find((v) => v.varIndex === varIndex)
+    const target = variables?.[varIndex]
+
+    if (!variables || !target) {
+      return vars?.find((v) => v.varIndex === varIndex)
+    }
+
+    return vars
+      ?.filter((v) => v.key === target.key && !!v.isSecret === !!target.secret)
+      .sort((a, b) => a.varIndex - b.varIndex)[
+      sameKeyOccurrence(variables, varIndex)
+    ]
   }
 
   /**
    * Used to get the value of a environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param variables The environment's variables (see `getEnvironmentVariable`)
    */
-  public getEnvironmentVariableValue(id: string, varIndex: number) {
-    const variable = this.getEnvironmentVariable(id, varIndex)
+  public getEnvironmentVariableValue(
+    id: string,
+    varIndex: number,
+    variables?: readonly VariableIdentity[]
+  ) {
+    const variable = this.getEnvironmentVariable(id, varIndex, variables)
     return variable?.currentValue
   }
 

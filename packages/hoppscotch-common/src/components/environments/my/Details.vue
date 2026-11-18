@@ -441,18 +441,27 @@ const workingEnvID = computed(() => {
 const getCurrentValue = (id: string | "Global", varIndex: number) => {
   const env = workingEnv.value?.variables[varIndex]
   if (env?.secret) {
-    return secretEnvironmentService.getSecretEnvironmentVariable(id, varIndex)
-      ?.value
+    return secretEnvironmentService.getSecretEnvironmentVariable(
+      id,
+      varIndex,
+      workingEnv.value?.variables
+    )?.value
   }
-  return currentEnvironmentValueService.getEnvironmentVariable(id, varIndex)
-    ?.currentValue
+  return currentEnvironmentValueService.getEnvironmentVariable(
+    id,
+    varIndex,
+    workingEnv.value?.variables
+  )?.currentValue
 }
 
 const getInitialValue = (id: string | "Global", varIndex: number) => {
   const env = workingEnv.value?.variables[varIndex]
   if (env?.secret) {
-    return secretEnvironmentService.getSecretEnvironmentVariable(id, varIndex)
-      ?.initialValue
+    return secretEnvironmentService.getSecretEnvironmentVariable(
+      id,
+      varIndex,
+      workingEnv.value?.variables
+    )?.initialValue
   }
   return env?.initialValue
 }
@@ -466,9 +475,13 @@ watch(
         ? "secret"
         : "variables"
 
-      if (props.editingEnvironmentIndex !== "Global") {
-        editingID.value = workingEnvID.value
-      }
+      // Assign on every open: this modal instance is shared between Global and
+      // personal envs, so a leftover env ID would route Global's secrets and
+      // current values to that env's store slots on save.
+      editingID.value =
+        props.editingEnvironmentIndex === "Global"
+          ? "Global"
+          : workingEnvID.value
       vars.value = pipe(
         workingEnv.value?.variables ?? [],
         A.mapWithIndex((index, e) => ({
@@ -587,9 +600,6 @@ const saveEnvironment = () => {
       editingID.value,
       nonSecretVariables
     )
-  } else if (props.editingEnvironmentIndex === "Global") {
-    secretEnvironmentService.addSecretEnvironment("Global", secretVariables)
-    currentEnvironmentValueService.addEnvironment("Global", nonSecretVariables)
   }
 
   const variables = stripClientLocalValuesForWire(filteredVariables)

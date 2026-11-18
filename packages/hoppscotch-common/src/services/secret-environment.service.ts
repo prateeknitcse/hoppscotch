@@ -14,6 +14,30 @@ export type SecretVariable = {
   initialValue?: string
 }
 
+/** The fields of an environment variable that identify its stored entry. */
+export type VariableIdentity = { key: string; secret?: boolean }
+
+/**
+ * Position of `variables[varIndex]` among the variables before it that share
+ * its key and secret flag (0 for the first, 1 for the second, ...).
+ *
+ * Client-local values are matched to variables by this occurrence rather than
+ * by the stored `varIndex` alone: stored indices go stale when rows above are
+ * removed, and an index-only lookup hands a value to whichever variable now
+ * sits at that slot. Occurrence order only changes when a same-key sibling is
+ * removed, so duplicate keys keep their own values.
+ */
+export const sameKeyOccurrence = (
+  variables: readonly VariableIdentity[],
+  varIndex: number
+) => {
+  const target = variables[varIndex]
+  return variables
+    .slice(0, varIndex)
+    .filter((v) => v.key === target.key && !!v.secret === !!target.secret)
+    .length
+}
+
 /**
  * This service is used to store and manage secret environments.
  * The secret environments are not synced with the server.
@@ -57,19 +81,43 @@ export class SecretEnvironmentService extends Service {
    * Get a secret environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param variables The environment's variables. When given, the entry is
+   * matched by key and same-key occurrence (see `sameKeyOccurrence`) instead of
+   * by `varIndex` alone, and non-secret variables never resolve to an entry.
    */
-  public getSecretEnvironmentVariable(id: string, varIndex: number) {
+  public getSecretEnvironmentVariable(
+    id: string,
+    varIndex: number,
+    variables?: readonly VariableIdentity[]
+  ) {
     const secretVars = this.getSecretEnvironment(id)
-    return secretVars?.find((secretVar) => secretVar.varIndex === varIndex)
+    const target = variables?.[varIndex]
+
+    if (!variables || !target) {
+      return secretVars?.find((secretVar) => secretVar.varIndex === varIndex)
+    }
+
+    if (!target.secret) return undefined
+
+    return secretVars
+      ?.filter((secretVar) => secretVar.key === target.key)
+      .sort((a, b) => a.varIndex - b.varIndex)[
+      sameKeyOccurrence(variables, varIndex)
+    ]
   }
 
   /**
    * Used to get the initial and current value of a secret environment variable.
    * @param id ID of the environment
    * @param varIndex Index of the variable in the environment
+   * @param variables The environment's variables (see `getSecretEnvironmentVariable`)
    */
-  public getSecretEnvironmentVariableValue(id: string, varIndex: number) {
-    const secretVar = this.getSecretEnvironmentVariable(id, varIndex)
+  public getSecretEnvironmentVariableValue(
+    id: string,
+    varIndex: number,
+    variables?: readonly VariableIdentity[]
+  ) {
+    const secretVar = this.getSecretEnvironmentVariable(id, varIndex, variables)
     if (!secretVar) return null
     return {
       value: secretVar.value || "",

@@ -333,18 +333,21 @@ const updateEnvironments = (
  * Get the environment variable value from the secret environment service
  * @param envID The environment ID
  * @param index The index of the environment variable
+ * @param vars The environment's variables, to match the stored entry by key
  * @returns Current value and initial value of the environment variable
  */
 const getSecretEnvironmentVariableValue = (
   envID: string,
-  index: number
+  index: number,
+  vars: Environment["variables"]
 ): {
   value: string
   initialValue?: string
 } | null => {
   return secretEnvironmentService.getSecretEnvironmentVariableValue(
     envID,
-    index
+    index,
+    vars
   )
 }
 
@@ -352,16 +355,18 @@ const getSecretEnvironmentVariableValue = (
  * Get the environment variable value from the current environment
  * @param envID The environment ID
  * @param index The index of the environment variable
- * @param isSecret Whether the environment variable is a secret
+ * @param vars The environment's variables, to match the stored entry by key
  * @returns Current value of the environment variable
  */
 const getEnvironmentVariableValue = (
   envID: string,
-  index: number
+  index: number,
+  vars: Environment["variables"]
 ): string | undefined => {
   return currentEnvironmentValueService.getEnvironmentVariableValue(
     envID,
-    index
+    index,
+    vars
   )
 }
 
@@ -1181,14 +1186,14 @@ const resolveEnvVars = (
 ): Environment["variables"] =>
   vars.map((v, index) => {
     const secretMeta = v.secret
-      ? getSecretEnvironmentVariableValue(envID, index)
+      ? getSecretEnvironmentVariableValue(envID, index, vars)
       : null
     return {
       ...v,
       currentValue:
         (v.secret
           ? secretMeta?.value
-          : getEnvironmentVariableValue(envID, index)) ?? "",
+          : getEnvironmentVariableValue(envID, index, vars)) ?? "",
       // For a secret, use the secret store's initialValue (falling back to the
       // definition's when the store has no entry); for a non-secret, use the
       // definition's initialValue directly. The old `: ""` branch produced a

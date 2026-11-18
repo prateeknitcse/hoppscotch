@@ -694,11 +694,16 @@ const globalVals = useReadonlyStream(globalEnv$, {
 const resolveDisplayVariable = (
   variable: Environment["variables"][number],
   envID: string,
-  index: number
+  index: number,
+  variables: Environment["variables"]
 ) => {
   if (variable.secret) {
     const secretValue =
-      secretEnvironmentService.getSecretEnvironmentVariableValue(envID, index)
+      secretEnvironmentService.getSecretEnvironmentVariableValue(
+        envID,
+        index,
+        variables
+      )
     return {
       ...variable,
       initialValue: maskSecretValue(secretValue?.initialValue),
@@ -710,22 +715,23 @@ const resolveDisplayVariable = (
     currentValue:
       currentEnvironmentValueService.getEnvironmentVariableValue(
         envID,
-        index
+        index,
+        variables
       ) ?? "",
   }
 }
 
 const globalEnvs = computed(() => {
-  return (globalVals.value?.variables ?? []).map((variable, index) =>
-    resolveDisplayVariable(variable, "Global", index)
+  return (globalVals.value?.variables ?? []).map((variable, index, vars) =>
+    resolveDisplayVariable(variable, "Global", index, vars)
   )
 })
 
 const environmentVariables = computed(() => {
   if (selectedEnv.value.variables && selectedEnv.value.id) {
     const envID = selectedEnv.value.id
-    return selectedEnv.value.variables.map((variable, index) =>
-      resolveDisplayVariable(variable, envID, index)
+    return selectedEnv.value.variables.map((variable, index, vars) =>
+      resolveDisplayVariable(variable, envID, index, vars)
     )
   }
   return []

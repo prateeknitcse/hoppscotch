@@ -28,11 +28,13 @@ const unWrapEnvironments = (
   const resolvedGlobalWithSecrets = global.map((globalVar, index) => {
     const secretVar = secretEnvironmentService.getSecretEnvironmentVariable(
       "Global",
-      index
+      index,
+      global
     )
     const currentVar = currentEnvironmentValueService.getEnvironmentVariable(
       "Global",
-      index
+      index,
+      global
     )
 
     if (secretVar) {
@@ -52,11 +54,13 @@ const unWrapEnvironments = (
     (selectedVar, index) => {
       const secretVar = secretEnvironmentService.getSecretEnvironmentVariable(
         selected.id,
-        index
+        index,
+        selected.variables
       )
       const currentVar = currentEnvironmentValueService.getEnvironmentVariable(
         selected.id,
-        index
+        index,
+        selected.variables
       )
       if (secretVar) {
         return {

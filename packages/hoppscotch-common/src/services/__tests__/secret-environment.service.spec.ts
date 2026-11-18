@@ -22,6 +22,77 @@ describe("SecretEnvironmentService", () => {
     })
   })
 
+  describe("getSecretEnvironmentVariable with variables", () => {
+    const id = "env"
+
+    it("keeps duplicate-key secrets separate when a row above the second one was removed", () => {
+      // Stored for [X(secret), A, X(secret)]; the variables list no longer has A.
+      service.addSecretEnvironment(id, [
+        { key: "X", value: "first", varIndex: 0 },
+        { key: "X", value: "second", varIndex: 2 },
+      ])
+      const variables = [
+        { key: "X", secret: true },
+        { key: "X", secret: true },
+      ]
+
+      expect(
+        service.getSecretEnvironmentVariable(id, 0, variables)?.value
+      ).toBe("first")
+      expect(
+        service.getSecretEnvironmentVariable(id, 1, variables)?.value
+      ).toBe("second")
+    })
+
+    it("doesn't hand a secret's value to the variable that moved into its slot", () => {
+      // Stored for [A, S(secret), B(secret)]; the variables list no longer has A.
+      service.addSecretEnvironment(id, [
+        { key: "S", value: "s-value", varIndex: 1 },
+        { key: "B", value: "b-value", varIndex: 2 },
+      ])
+      const variables = [
+        { key: "S", secret: true },
+        { key: "B", secret: true },
+      ]
+
+      expect(
+        service.getSecretEnvironmentVariable(id, 0, variables)?.value
+      ).toBe("s-value")
+      expect(
+        service.getSecretEnvironmentVariable(id, 1, variables)?.value
+      ).toBe("b-value")
+    })
+
+    it("resolves duplicate keys by position when stored indices are current", () => {
+      service.addSecretEnvironment(id, [
+        { key: "X", value: "first", varIndex: 0 },
+        { key: "X", value: "second", varIndex: 1 },
+      ])
+      const variables = [
+        { key: "X", secret: true },
+        { key: "X", secret: true },
+      ]
+
+      expect(
+        service.getSecretEnvironmentVariable(id, 1, variables)?.value
+      ).toBe("second")
+    })
+
+    it("returns undefined for a non-secret variable sitting at a stored secret's index", () => {
+      service.addSecretEnvironment(id, [
+        { key: "S", value: "s-value", varIndex: 1 },
+      ])
+      const variables = [
+        { key: "S", secret: true },
+        { key: "B", secret: false },
+      ]
+
+      expect(
+        service.getSecretEnvironmentVariable(id, 1, variables)
+      ).toBeUndefined()
+    })
+  })
+
   describe("getSecretEnvironment", () => {
     it("should return the secret variables of the specified environment", () => {
       const id = "testEnvironment"
